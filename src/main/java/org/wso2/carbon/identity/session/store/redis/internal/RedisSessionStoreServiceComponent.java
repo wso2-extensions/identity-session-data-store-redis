@@ -100,8 +100,11 @@ public class RedisSessionStoreServiceComponent {
      */
     @Reference(
             name = "session.serializer",
+            // Optional, since nothing registers a serializer in a default deployment and the store
+            // falls back to Java serialization. A mandatory reference would leave the component
+            // unsatisfied and register no store at all.
             service = SessionSerializer.class,
-            cardinality = ReferenceCardinality.MANDATORY,
+            cardinality = ReferenceCardinality.OPTIONAL,
             policy = ReferencePolicy.DYNAMIC,
             unbind = "unsetSessionSerializer"
     )

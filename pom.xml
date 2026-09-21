@@ -39,7 +39,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <carbon.identity.framework.version>7.11.182-SNAPSHOT</carbon.identity.framework.version>
+        <carbon.identity.framework.version>7.11.208</carbon.identity.framework.version>
         <carbon.kernel.version>4.12.22</carbon.kernel.version>
         <carbon.kernel.package.import.version.range>[4.5.0, 5.0.0)</carbon.kernel.package.import.version.range>
 

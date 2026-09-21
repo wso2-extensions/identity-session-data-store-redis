@@ -397,16 +397,10 @@ refresh.
 mvn clean test
 ```
 
-`RedisScriptsTest`, `RedisSessionDataStoreIntegrationTest` and `RedisFederatedSessionStoreTest` run
-against a real Redis and are skipped when none is reachable. They use port 6380 rather than the default,
-so a test run cannot reach a deployed server:
-
-```bash
-docker run -d --rm -p 6380:6379 redis:7-alpine
-mvn clean test
-```
-
-A different server can be given with `-Dredis.test.uri=redis://host:port`.
+The tests need no Redis server. They cover key building, configuration parsing, the connection details
+built for each topology, the store models, and the behaviour of the store when Redis cannot be reached.
+The behaviour that only a server can show, such as the Lua scripts and the store operations end to end,
+is covered by the manual verification above.
 
 ## Differences from the relational store
 
