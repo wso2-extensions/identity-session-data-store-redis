@@ -1,127 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+  ~ Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
   ~
-  ~  WSO2 Inc. licenses this file to you under the Apache License,
-  ~  Version 2.0 (the "License"); you may not use this file except
-  ~  in compliance with the License.
-  ~  You may obtain a copy of the License at
+  ~ WSO2 LLC. licenses this file to you under the Apache License,
+  ~ Version 2.0 (the "License"); you may not use this file except
+  ~ in compliance with the License.
+  ~ You may obtain a copy of the License at
   ~
   ~     http://www.apache.org/licenses/LICENSE-2.0
   ~
-  ~  Unless required by applicable law or agreed to in writing,
-  ~  software distributed under the License is distributed on an
-  ~  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  ~  KIND, either express or implied.  See the License for the
-  ~  specific language governing permissions and limitations
-  ~  under the License.
+  ~ Unless required by applicable law or agreed to in writing,
+  ~ software distributed under the License is distributed on an
+  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  ~ KIND, either express or implied. See the License for the
+  ~ specific language governing permissions and limitations
+  ~ under the License.
   -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.wso2.session.store</groupId>
-    <artifactId>org.wso2.session.store.redis</artifactId>
+    <groupId>org.wso2.carbon.identity.session.store</groupId>
+    <artifactId>session-store-redis</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>bundle</packaging>
-    <name>org.wso2.session.store.redis</name>
-    <url>http://maven.apache.org</url>
+    <name>WSO2 IS - Session Store Redis</name>
+    <description>
+        Self-contained, separately-deployable Redis session store for WSO2 Identity Server.
+        Registers a SessionDataStore and a UserSessionDAO, which the framework selects through the
+        SessionStoreImplType configuration. Extends the abstract SessionDataStore that ships in
+        carbon-identity-framework, where the pluggable supertype and the JDBC default live.
+        Supports the standalone, sentinel and cluster topologies, with a hybrid-hash value layout
+        and native per-key TTL.
+    </description>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.wso2.carbon.identity.framework</groupId>
-            <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
-            <version>${org.wso2.carbon.identity.framework.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.wso2.carbon.identity.framework</groupId>
-            <artifactId>org.wso2.carbon.identity.event</artifactId>
-            <version>5.18.187</version>
-        </dependency>
-        <dependency>
-            <groupId>redis.clients</groupId>
-            <artifactId>jedis</artifactId>
-            <version>${redis.clients.jedis.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-lang.wso2</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.6.0.wso2v1</version>
-        </dependency>
-    </dependencies>
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.1</version>
-                <configuration>
-                    <source>8</source>
-                    <target>8</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-scr-plugin</artifactId>
-                <version>1.7.2</version>
-                <executions>
-                    <execution>
-                        <id>generate-scr-scrdescriptor</id>
-                        <goals>
-                            <goal>scr</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-bundle-plugin</artifactId>
-                <version>3.2.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <instructions>
-                        <Bundle-SymbolicName>${pom.artifactId}</Bundle-SymbolicName>
-                        <Bundle-Name>${pom.artifactId}</Bundle-Name>
-                        <Private-Package>
-                            org.wso2.session.store.redis.internal
-                        </Private-Package>
-                        <Export-Package>
-                            !org.wso2.session.store.redis.internal,
-                            org.wso2.session.store.redis.*,
-                        </Export-Package>
-                        <Import-Package>
-                            org.osgi.framework; version="${osgi.framework.imp.pkg.version.range}",
-                            org.osgi.service.component; version="${osgi.service.component.imp.pkg.version.range}",
-                            org.apache.commons.logging,
-                            org.wso2.carbon.identity.application.authentication.framework,
-                            org.apache.commons.lang.*; version="${commons-lang.wso2.osgi.version.range}",
-                        </Import-Package>
-                        <DynamicImport-Package>*</DynamicImport-Package>
-                        <Embed-Dependency>
-                            commons-lang
-                        </Embed-Dependency>
-                    </instructions>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+        <carbon.identity.framework.version>7.11.182-SNAPSHOT</carbon.identity.framework.version>
+        <carbon.kernel.version>4.12.22</carbon.kernel.version>
+        <carbon.kernel.package.import.version.range>[4.5.0, 5.0.0)</carbon.kernel.package.import.version.range>
 
+        <lettuce.version>6.3.2.RELEASE</lettuce.version>
+        <slf4j.version>2.0.13</slf4j.version>
+        <junit.version>5.10.2</junit.version>
+        <osgi.annotations.version>1.5.1</osgi.annotations.version>
+        <spotbugs.annotations.version>4.9.8</spotbugs.annotations.version>
+
+        <surefire.plugin.version>3.2.5</surefire.plugin.version>
+        <bundle.plugin.version>5.1.9</bundle.plugin.version>
+        <maven.checkstyleplugin.version>3.1.0</maven.checkstyleplugin.version>
+        <maven.spotbugsplugin.version>4.9.8.2</maven.spotbugsplugin.version>
+        <wso2.code.quality.tools.version>v1.3</wso2.code.quality.tools.version>
+    </properties>
+
+    <!-- WSO2 artifacts (carbon kernel, carbon-identity-framework) are not on Maven Central, so this
+         standalone repo declares the repositories itself rather than relying on a developer's
+         settings.xml. -->
     <repositories>
         <repository>
-            <id>wso2-nexus</id>
-            <name>WSO2 internal Repository</name>
-            <url>https://maven.wso2.org/nexus/content/groups/wso2-public/</url>
-            <releases>
-                <enabled>true</enabled>
-                <updatePolicy>daily</updatePolicy>
-                <checksumPolicy>ignore</checksumPolicy>
-            </releases>
-        </repository>
-        <repository>
             <id>wso2.releases</id>
-            <name>WSO2 internal Repository</name>
+            <name>WSO2 Releases Repository</name>
             <url>https://maven.wso2.org/nexus/content/repositories/releases/</url>
             <releases>
                 <enabled>true</enabled>
@@ -141,12 +82,195 @@
                 <enabled>false</enabled>
             </releases>
         </repository>
+        <repository>
+            <id>wso2-nexus</id>
+            <name>WSO2 Public Repository</name>
+            <url>https://maven.wso2.org/nexus/content/groups/wso2-public/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>daily</updatePolicy>
+                <checksumPolicy>ignore</checksumPolicy>
+            </releases>
+        </repository>
     </repositories>
-    <properties>
-        <org.wso2.carbon.identity.framework.version>5.19.50</org.wso2.carbon.identity.framework.version>
-        <redis.clients.jedis.version>3.3.0</redis.clients.jedis.version>
-        <osgi.framework.imp.pkg.version.range>[1.7.0, 2.0.0)</osgi.framework.imp.pkg.version.range>
-        <osgi.service.component.imp.pkg.version.range>[1.2.0, 2.0.0)</osgi.service.component.imp.pkg.version.range>
-        <commons-lang.wso2.osgi.version.range>[2.6.0,3.0.0)</commons-lang.wso2.osgi.version.range>
-    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.wso2.carbon.identity.framework</groupId>
+            <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
+            <version>${carbon.identity.framework.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.identity.framework</groupId>
+            <artifactId>org.wso2.carbon.identity.core</artifactId>
+            <version>${carbon.identity.framework.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon</groupId>
+            <artifactId>org.wso2.carbon.base</artifactId>
+            <version>${carbon.kernel.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <version>${lettuce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.component.annotations</artifactId>
+            <version>${osgi.annotations.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>${spotbugs.annotations.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>${bundle.plugin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-SymbolicName>org.wso2.carbon.identity.session.store.redis</Bundle-SymbolicName>
+                        <!-- Embed Lettuce + Netty (and reactive deps) inside the bundle. -->
+                        <Embed-Dependency>lettuce-core,netty-*,reactor-core,reactive-streams;scope=compile|runtime</Embed-Dependency>
+                        <Embed-Transitive>true</Embed-Transitive>
+                        <!-- Embedded Lettuce/Netty/Reactor packages must resolve from this bundle's
+                             own classpath, never be imported. If any io.netty.* package is imported,
+                             OSGi can wire it to a different Netty in the runtime while a sibling
+                             package resolves from the embedded jars; the two class spaces then split
+                             and the JVM verifier throws (e.g. DnsAddressResolverGroup not assignable
+                             to AddressResolverGroup). So exclude io.netty.*/io.lettuce.*/reactor.*/
+                             org.reactivestreams.* from Import-Package. The OS-native transports
+                             (epoll/kqueue/io_uring/tcnative) are NOT embedded and are guarded by
+                             Netty reflection, so they stay as genuine optional imports and must be
+                             listed before the io.netty.* exclusion (first match wins). -->
+                        <!-- Every package the bundle needs is listed so that a runtime missing one
+                             fails to resolve at install time, rather than with a NoClassDefFoundError on
+                             the first session operation. -->
+                        <Import-Package>
+                            org.wso2.carbon.identity.application.authentication.framework.store,
+                            org.wso2.carbon.identity.application.authentication.framework.exception,
+                            org.wso2.carbon.identity.application.authentication.framework.exception.session.mgt,
+                            org.wso2.carbon.identity.application.authentication.framework.util,
+                            org.wso2.carbon.identity.application.authentication.framework.dao,
+                            org.wso2.carbon.identity.application.authentication.framework.model,
+                            org.wso2.carbon.identity.application.authentication.framework.context,
+                            org.wso2.carbon.identity.application.common.model,
+                            org.wso2.carbon.identity.core.model,
+                            org.wso2.carbon.identity.core.util,
+                            org.wso2.carbon.database.utils.jdbc.exceptions,
+                            org.wso2.carbon.idp.mgt.util,
+                            org.wso2.carbon.base,
+                            org.apache.commons.lang,
+                            org.apache.commons.logging,
+                            org.osgi.framework,
+                            org.osgi.service.component;version="[1.4,2)",
+                            org.osgi.service.component.annotations;resolution:=optional,
+                            org.slf4j,
+                            io.netty.channel.epoll;resolution:=optional,
+                            io.netty.channel.kqueue;resolution:=optional,
+                            io.netty.incubator.channel.uring;resolution:=optional,
+                            io.netty.internal.tcnative;resolution:=optional,
+                            !edu.umd.cs.findbugs.annotations,
+                            !io.netty.*,
+                            !io.lettuce.*,
+                            !reactor.*,
+                            !org.reactivestreams.*,
+                            *;resolution:=optional
+                        </Import-Package>
+                        <Export-Package>!*</Export-Package>
+                        <!-- Lettuce/Netty reference JSR-305 annotations, which makes bnd emit a
+                             mandatory `Require-Capability: osgi.contract=JavaAnnotation`. WSO2's
+                             Equinox runtime does not publish that contract, so the bundle would
+                             fail to resolve. Disable bnd contract processing so the header is not
+                             generated. -->
+                        <_contract>!*</_contract>
+                    </instructions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${maven.checkstyleplugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>validate</id>
+                        <phase>validate</phase>
+                        <configuration>
+                            <configLocation>
+                                https://raw.githubusercontent.com/wso2/code-quality-tools/${wso2.code.quality.tools.version}/checkstyle/checkstyle.xml
+                            </configLocation>
+                            <suppressionsLocation>
+                                https://raw.githubusercontent.com/wso2/code-quality-tools/${wso2.code.quality.tools.version}/checkstyle/suppressions.xml
+                            </suppressionsLocation>
+                            <encoding>UTF-8</encoding>
+                            <consoleOutput>true</consoleOutput>
+                            <failsOnError>true</failsOnError>
+                            <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                        </configuration>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>${maven.spotbugsplugin.version}</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                    <xmlOutput>true</xmlOutput>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>analyze-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
