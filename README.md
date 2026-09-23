@@ -127,8 +127,9 @@ No cluster hash tags are used, as every scripted operation touches a single key.
 mvn clean install
 ```
 
-The bundle is at `target/session-store-redis-1.0.0-SNAPSHOT.jar`. Lettuce and Netty
-are embedded in it, so nothing is added to the server classpath.
+The bundle is at
+`org.wso2.carbon.identity.session.store.redis/target/org.wso2.carbon.identity.session.store.redis-1.0.0-SNAPSHOT.jar`.
+Lettuce and Netty are embedded in it, so nothing is added to the server classpath.
 
 ## Configuring
 
@@ -144,7 +145,7 @@ bundle reads the ones it defines and applies a default to every property that is
 ### 1. Deploy the bundle
 
 ```bash
-cp target/session-store-redis-1.0.0-SNAPSHOT.jar \
+cp org.wso2.carbon.identity.session.store.redis/target/org.wso2.carbon.identity.session.store.redis-1.0.0-SNAPSHOT.jar \
    $IS_HOME/repository/components/dropins/
 ```
 

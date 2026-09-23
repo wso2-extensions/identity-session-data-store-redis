@@ -727,7 +727,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
             throws SessionManagementServerException {
 
         List<FederatedUserSession> sessions = getFederatedAuthSessionsDetails(fedIdpSessionId);
-        return sessions.isEmpty() ? null : sessions.getFirst();
+        return sessions.isEmpty() ? null : sessions.get(0);
     }
 
     /**

@@ -21,26 +21,35 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.wso2.carbon.identity.session.store</groupId>
-    <artifactId>session-store-redis</artifactId>
+    <parent>
+        <groupId>org.wso2</groupId>
+        <artifactId>wso2</artifactId>
+        <version>1.4</version>
+    </parent>
+
+    <scm>
+        <url>https://github.com/wso2-extensions/identity-session-data-store-redis.git</url>
+        <developerConnection>scm:git:https://github.com/wso2-extensions/identity-session-data-store-redis.git</developerConnection>
+        <connection>scm:git:https://github.com/wso2-extensions/identity-session-data-store-redis.git</connection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <groupId>org.wso2.carbon.extension.identity.session.store.redis</groupId>
+    <artifactId>identity-session-data-store-redis</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <packaging>bundle</packaging>
-    <name>WSO2 IS - Session Store Redis</name>
-    <description>
-        Self-contained, separately-deployable Redis session store for WSO2 Identity Server.
-        Registers a SessionDataStore and a UserSessionDAO, which the framework selects through the
-        SessionStoreImplType configuration. Extends the abstract SessionDataStore that ships in
-        carbon-identity-framework, where the pluggable supertype and the JDBC default live.
-        Supports the standalone, sentinel and cluster topologies, with a hybrid-hash value layout
-        and native per-key TTL.
-    </description>
+    <modules>
+        <module>org.wso2.carbon.identity.session.store.redis</module>
+    </modules>
+
+    <packaging>pom</packaging>
+    <name>Redis session store for WSO2 Identity Server</name>
 
     <properties>
-        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <carbon.identity.framework.version>7.11.208</carbon.identity.framework.version>
         <carbon.kernel.version>4.12.22</carbon.kernel.version>
+        <carbon.identity.framework.package.import.version.range>[7.8.0,8.0.0)</carbon.identity.framework.package.import.version.range>
         <carbon.kernel.package.import.version.range>[4.5.0, 5.0.0)</carbon.kernel.package.import.version.range>
 
         <lettuce.version>6.3.2.RELEASE</lettuce.version>
@@ -103,179 +112,46 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
+                <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
+                <version>${carbon.identity.framework.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
+                <artifactId>org.wso2.carbon.identity.core</artifactId>
+                <version>${carbon.identity.framework.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon</groupId>
+                <artifactId>org.wso2.carbon.base</artifactId>
+                <version>${carbon.kernel.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.lettuce</groupId>
+                <artifactId>lettuce-core</artifactId>
+                <version>${lettuce.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.service.component.annotations</artifactId>
+                <version>${osgi.annotations.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-annotations</artifactId>
+                <version>${spotbugs.annotations.version}</version>
+                <scope>provided</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.wso2.carbon.identity.framework</groupId>
-            <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
-            <version>${carbon.identity.framework.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.wso2.carbon.identity.framework</groupId>
-            <artifactId>org.wso2.carbon.identity.core</artifactId>
-            <version>${carbon.identity.framework.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.wso2.carbon</groupId>
-            <artifactId>org.wso2.carbon.base</artifactId>
-            <version>${carbon.kernel.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.lettuce</groupId>
-            <artifactId>lettuce-core</artifactId>
-            <version>${lettuce.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.service.component.annotations</artifactId>
-            <version>${osgi.annotations.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.github.spotbugs</groupId>
-            <artifactId>spotbugs-annotations</artifactId>
-            <version>${spotbugs.annotations.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${surefire.plugin.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-bundle-plugin</artifactId>
-                <version>${bundle.plugin.version}</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <instructions>
-                        <Bundle-SymbolicName>org.wso2.carbon.identity.session.store.redis</Bundle-SymbolicName>
-                        <!-- Embed Lettuce + Netty (and reactive deps) inside the bundle. -->
-                        <Embed-Dependency>lettuce-core,netty-*,reactor-core,reactive-streams;scope=compile|runtime</Embed-Dependency>
-                        <Embed-Transitive>true</Embed-Transitive>
-                        <!-- Embedded Lettuce/Netty/Reactor packages must resolve from this bundle's
-                             own classpath, never be imported. If any io.netty.* package is imported,
-                             OSGi can wire it to a different Netty in the runtime while a sibling
-                             package resolves from the embedded jars; the two class spaces then split
-                             and the JVM verifier throws (e.g. DnsAddressResolverGroup not assignable
-                             to AddressResolverGroup). So exclude io.netty.*/io.lettuce.*/reactor.*/
-                             org.reactivestreams.* from Import-Package. The OS-native transports
-                             (epoll/kqueue/io_uring/tcnative) are NOT embedded and are guarded by
-                             Netty reflection, so they stay as genuine optional imports and must be
-                             listed before the io.netty.* exclusion (first match wins). -->
-                        <!-- Every package the bundle needs is listed so that a runtime missing one
-                             fails to resolve at install time, rather than with a NoClassDefFoundError on
-                             the first session operation. -->
-                        <Import-Package>
-                            org.wso2.carbon.identity.application.authentication.framework.store,
-                            org.wso2.carbon.identity.application.authentication.framework.exception,
-                            org.wso2.carbon.identity.application.authentication.framework.exception.session.mgt,
-                            org.wso2.carbon.identity.application.authentication.framework.util,
-                            org.wso2.carbon.identity.application.authentication.framework.dao,
-                            org.wso2.carbon.identity.application.authentication.framework.model,
-                            org.wso2.carbon.identity.application.authentication.framework.context,
-                            org.wso2.carbon.identity.application.common.model,
-                            org.wso2.carbon.identity.core.model,
-                            org.wso2.carbon.identity.core.util,
-                            org.wso2.carbon.database.utils.jdbc.exceptions,
-                            org.wso2.carbon.idp.mgt.util,
-                            org.wso2.carbon.base,
-                            org.apache.commons.lang,
-                            org.apache.commons.logging,
-                            org.osgi.framework,
-                            org.osgi.service.component;version="[1.2,2)",
-                            org.osgi.service.component.annotations;resolution:=optional,
-                            org.slf4j,
-                            io.netty.channel.epoll;resolution:=optional,
-                            io.netty.channel.kqueue;resolution:=optional,
-                            io.netty.incubator.channel.uring;resolution:=optional,
-                            io.netty.internal.tcnative;resolution:=optional,
-                            !edu.umd.cs.findbugs.annotations,
-                            !io.netty.*,
-                            !io.lettuce.*,
-                            !reactor.*,
-                            !org.reactivestreams.*,
-                            *;resolution:=optional
-                        </Import-Package>
-                        <Export-Package>!*</Export-Package>
-                        <!-- Lettuce/Netty reference JSR-305 annotations, which makes bnd emit a
-                             mandatory `Require-Capability: osgi.contract=JavaAnnotation`. WSO2's
-                             Equinox runtime does not publish that contract, so the bundle would
-                             fail to resolve. Disable bnd contract processing so the header is not
-                             generated. -->
-                        <_contract>!*</_contract>
-                        <!-- bnd defaults to DS 1.3 metadata, which adds a mandatory
-                             osgi.extender=osgi.component;version>=1.3 requirement. Runtimes that ship
-                             Equinox DS (spec 1.2) cannot satisfy it. The component uses no DS 1.3
-                             features, so emit 1.1 metadata, which newer SCR runtimes also accept. -->
-                        <_dsannotations-options>version;minimum=1.1.0</_dsannotations-options>
-                    </instructions>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>${maven.checkstyleplugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>validate</id>
-                        <phase>validate</phase>
-                        <configuration>
-                            <configLocation>
-                                https://raw.githubusercontent.com/wso2/code-quality-tools/${wso2.code.quality.tools.version}/checkstyle/checkstyle.xml
-                            </configLocation>
-                            <suppressionsLocation>
-                                https://raw.githubusercontent.com/wso2/code-quality-tools/${wso2.code.quality.tools.version}/checkstyle/suppressions.xml
-                            </suppressionsLocation>
-                            <encoding>UTF-8</encoding>
-                            <consoleOutput>true</consoleOutput>
-                            <failsOnError>true</failsOnError>
-                            <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                        </configuration>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>com.github.spotbugs</groupId>
-                <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>${maven.spotbugsplugin.version}</version>
-                <configuration>
-                    <effort>Max</effort>
-                    <threshold>Low</threshold>
-                    <xmlOutput>true</xmlOutput>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>analyze-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>
