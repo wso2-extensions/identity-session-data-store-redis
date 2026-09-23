@@ -43,6 +43,7 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.session.store.redis.exception.RedisSessionStoreException;
 import org.wso2.carbon.identity.session.store.redis.model.FederatedSessionRef;
 import org.wso2.carbon.identity.session.store.redis.model.SessionInfo;
+import org.wso2.carbon.identity.session.store.redis.model.SessionRemovalResult;
 import org.wso2.carbon.identity.session.store.redis.util.RedisConstants;
 import org.wso2.carbon.identity.session.store.redis.util.RedisKeyUtils;
 import org.wso2.carbon.identity.session.store.redis.util.RedisScripts;
@@ -923,14 +924,14 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
     /**
      * Removes a session and everything belonging to it, the way the delete path of the session data store
      * does, so the two paths cannot leave a session in different states. The deletion is the same script,
-     * so the user and the tenant needed to clean the indexes come back with it rather than with a read of
-     * their own.
+     * so the user, the tenant and the federated mappings needed to clean up come back with it rather than
+     * with a read of their own.
      */
     private void removeTerminatedSession(String sessionId) throws RedisSessionStoreException {
 
-        List<Object> deleted = redisTemplate.executeScript(RedisScripts.DELETE_SESSION,
-                ScriptOutputType.MULTI, context.getSessionContextKey(sessionId));
-        Integer tenantId = deletedTenant(deleted);
+        SessionRemovalResult deleted = SessionRemovalResult.build(redisTemplate.executeScript(
+                RedisScripts.DELETE_SESSION, ScriptOutputType.MULTI, context.getSessionContextKey(sessionId)));
+        Integer tenantId = deleted.getTenantId();
         if (tenantId != null) {
             // The tenant is written with the session record, so an entry that carries one was a session
             // rather than fields written ahead of it, and a session should already have been removed.
@@ -938,7 +939,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
                     + sessionId + ".");
         }
         byte[] session = RedisValueUtils.toBytes(sessionId);
-        String userId = deletedUserId(deleted);
+        String userId = deleted.getUserId();
         if (userId != null) {
             redisTemplate.executeScript(RedisScripts.REMOVE_INDEXED_SESSION, ScriptOutputType.INTEGER,
                     keyUtils.getUserKey(userId), session);
@@ -947,7 +948,8 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
             redisTemplate.executeScript(RedisScripts.REMOVE_INDEXED_SESSION, ScriptOutputType.INTEGER,
                     keyUtils.getTenantKey(tenantId), session);
         }
-        federatedSessionStore.removeBySession(sessionId);
+        // The session is already gone, so its mappings are the ones the deletion reported.
+        federatedSessionStore.removeMappings(deleted.getFederatedMembers());
     }
 
     /**
@@ -989,25 +991,6 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
         }
         redisTemplate.executeScript(RedisScripts.ADD_TENANT_SESSION, ScriptOutputType.INTEGER,
                 keyUtils.getTenantKey(tenantId), RedisScripts.createSessionMember(sessionId, expiry));
-    }
-
-    /**
-     * The user identifier a deletion returned, which is the first element of its reply and is absent when
-     * the entry held no user.
-     */
-    private static String deletedUserId(List<?> result) {
-
-        return result != null && !result.isEmpty() ? RedisValueUtils.toUserId(result.get(0)) : null;
-    }
-
-    /**
-     * The tenant a deletion returned, which is the second element of its reply and is absent when the
-     * entry held no session record.
-     */
-    private static Integer deletedTenant(List<?> result) {
-
-        return result != null && result.size() > 1
-                ? RedisValueUtils.toInteger(RedisValueUtils.toString(result.get(1))) : null;
     }
 
     /**

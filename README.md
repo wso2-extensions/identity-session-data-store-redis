@@ -192,8 +192,7 @@ deployment is never mistaken for a working one. Leaving the host unset aborts th
 configuration with
 
 ```
-The session store is set to Redis but no Redis host is configured. Set 'hosts' in the SessionStorage
-configuration of identity.xml.
+The session store is set to redis but no Redis host is configured. Configure 'hosts'.
 ```
 
 which is logged as an error and leaves the component activated with no store registered, so the server
@@ -205,12 +204,16 @@ starts and the failure is read at start-up rather than as a missing session late
 rendered only when `session_storage.type` is set, so a server that does not configure a store keeps the
 JDBC one and the element never appears.
 
-The bundle registers its store whenever it activates, and the framework selects it only when `Type`
-names it, so a server left on the relational store simply never calls it. It does still read its
-configuration at activation, so a bundle dropped into `dropins` of a server that configures no Redis
-host logs the error above; remove the bundle, or configure it, to keep the start-up log clean. A store
-that is registered but disabled connects to nothing, because the connection is opened on first use and
-a disabled store issues no operation.
+The bundle reads its configuration and registers its store only when `Type` is `redis`. On a server
+left on the relational store it activates, logs
+
+```
+Redis session store is not selected, as the configured session store is 'jdbc'. The Redis session store is not registered.
+```
+
+and does nothing else, so the bundle can stay in `dropins` and switching stores needs only a change to
+`deployment.toml`. A store that is registered but disabled connects to nothing, because the connection
+is opened on first use and a disabled store issues no operation.
 
 ### 3. Available settings
 
@@ -307,7 +310,7 @@ You should see a session record, a user index and a tenant index:
 ```
 idn:s:AppAuthFrameworkSessionContextCache:<sessionId>
 idn:u:<userId>
-idn:tn:-1
+idn:tid:-1
 ```
 
 Inspect the record and confirm it holds an expiry, so that the session is removed by Redis:

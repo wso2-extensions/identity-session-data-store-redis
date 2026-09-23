@@ -228,10 +228,19 @@ public class RedisConnectionManager implements AutoCloseable {
                         .connectTimeout(Duration.ofMillis(config.getConnectionTimeout()))
                         .build())
                 .build());
-        StatefulRedisConnection<String, byte[]> newConnection = newClient.connect(CODEC);
-        newConnection.setTimeout(Duration.ofMillis(config.getCommandTimeout()));
-        adopt(newClient, newConnection, newConnection.sync(), newConnection.async());
-        return newClient;
+        boolean adopted = false;
+        try {
+            StatefulRedisConnection<String, byte[]> newConnection = newClient.connect(CODEC);
+            newConnection.setTimeout(Duration.ofMillis(config.getCommandTimeout()));
+            adopt(newClient, newConnection, newConnection.sync(), newConnection.async());
+            adopted = true;
+            return newClient;
+        } finally {
+            if (!adopted) {
+                // The client is not returned to connect() on a failure, so it has to be released here.
+                release(null, newClient);
+            }
+        }
     }
 
     private AbstractRedisClient connectToCluster() throws RedisSessionStoreException {
@@ -253,10 +262,19 @@ public class RedisConnectionManager implements AutoCloseable {
         }
         newClient.setOptions(options.build());
 
-        StatefulRedisClusterConnection<String, byte[]> newConnection = newClient.connect(CODEC);
-        newConnection.setTimeout(Duration.ofMillis(config.getCommandTimeout()));
-        adopt(newClient, newConnection, newConnection.sync(), newConnection.async());
-        return newClient;
+        boolean adopted = false;
+        try {
+            StatefulRedisClusterConnection<String, byte[]> newConnection = newClient.connect(CODEC);
+            newConnection.setTimeout(Duration.ofMillis(config.getCommandTimeout()));
+            adopt(newClient, newConnection, newConnection.sync(), newConnection.async());
+            adopted = true;
+            return newClient;
+        } finally {
+            if (!adopted) {
+                // The client is not returned to connect() on a failure, so it has to be released here.
+                release(null, newClient);
+            }
+        }
     }
 
     private void adopt(AbstractRedisClient newClient, StatefulConnection<String, byte[]> newConnection,
@@ -313,7 +331,10 @@ public class RedisConnectionManager implements AutoCloseable {
             }
             int port = resolvePort(host, RedisConstants.DEFAULT_SENTINEL_PORT);
             if (builder == null) {
-                builder = RedisURI.Builder.sentinel(resolveHost(host), port, config.getMasterName());
+                builder = hasSentinelPassword
+                        ? RedisURI.Builder.sentinel(resolveHost(host), port, config.getMasterName(),
+                                String.valueOf(config.getSentinelPassword()))
+                        : RedisURI.Builder.sentinel(resolveHost(host), port, config.getMasterName());
             } else if (hasSentinelPassword) {
                 builder.withSentinel(resolveHost(host), port, String.valueOf(config.getSentinelPassword()));
             } else {

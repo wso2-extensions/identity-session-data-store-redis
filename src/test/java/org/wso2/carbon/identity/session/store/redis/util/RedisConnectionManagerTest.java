@@ -97,6 +97,30 @@ public class RedisConnectionManagerTest {
     }
 
     @Test
+    void testSentinelPasswordIsAppliedToEverySentinel() throws Exception {
+
+        RedisURI single = RedisConnectionManager.buildSentinelUri(new RedisStoreConfig.Builder()
+                .mode(RedisConstants.MODE_SENTINEL)
+                .hosts("10.0.0.1:26379")
+                .masterName("mymaster")
+                .sentinelPassword("sentinel-secret")
+                .build());
+
+        assertEquals("sentinel-secret", new String(single.getSentinels().get(0).getPassword()));
+
+        RedisURI several = RedisConnectionManager.buildSentinelUri(new RedisStoreConfig.Builder()
+                .mode(RedisConstants.MODE_SENTINEL)
+                .hosts("10.0.0.1:26379,10.0.0.2:26379")
+                .masterName("mymaster")
+                .sentinelPassword("sentinel-secret")
+                .build());
+
+        for (RedisURI sentinel : several.getSentinels()) {
+            assertEquals("sentinel-secret", new String(sentinel.getPassword()));
+        }
+    }
+
+    @Test
     void testSentinelModeRequiresTheMasterName() {
 
         assertThrows(RedisSessionStoreException.class,

@@ -59,7 +59,7 @@ public class RedisStoreConfig {
         this.username = builder.username;
         this.password = builder.password;
         this.sentinelPassword = builder.sentinelPassword;
-        this.mode = resolveMode(builder.mode);
+        this.mode = builder.mode;
         this.database = builder.database;
         this.sslEnabled = builder.sslEnabled;
         this.connectionTimeout = builder.connectionTimeout;
@@ -76,7 +76,7 @@ public class RedisStoreConfig {
      * default of every property that is not configured.
      *
      * @return the loaded configuration.
-     * @throws RedisStoreConfigurationException when no host is configured.
+     * @throws RedisStoreConfigurationException when no host is configured or the mode is unsupported.
      */
     public static RedisStoreConfig load() throws RedisStoreConfigurationException {
 
@@ -98,7 +98,7 @@ public class RedisStoreConfig {
      *
      * @param properties The configured properties.
      * @return the loaded configuration.
-     * @throws RedisStoreConfigurationException when no host is configured.
+     * @throws RedisStoreConfigurationException when no host is configured or the mode is unsupported.
      */
     static RedisStoreConfig from(Properties properties) throws RedisStoreConfigurationException {
 
@@ -141,18 +141,18 @@ public class RedisStoreConfig {
     }
 
     /**
-     * Resolves the configured mode to one of the supported topologies, falling back to standalone and
-     * logging that it did so.
+     * Rejects a mode that is not one of the supported topologies.
      */
-    private static String resolveMode(String mode) {
+    private static void validateMode(String mode) {
 
         if (RedisConstants.MODE_STANDALONE.equalsIgnoreCase(mode)
                 || RedisConstants.MODE_SENTINEL.equalsIgnoreCase(mode)
                 || RedisConstants.MODE_CLUSTER.equalsIgnoreCase(mode)) {
-            return mode;
+            return;
         }
-        LOG.error("Unsupported Redis mode: " + mode + ". Falling back to " + RedisConstants.MODE_STANDALONE + ".");
-        return RedisConstants.MODE_STANDALONE;
+        throw new RedisStoreConfigurationException("Unsupported Redis mode: " + mode + ". Supported modes are "
+                + RedisConstants.MODE_STANDALONE + ", " + RedisConstants.MODE_SENTINEL + " and "
+                + RedisConstants.MODE_CLUSTER + ".");
     }
 
     private static String getString(Properties properties, String key, String defaultValue) {
@@ -582,9 +582,11 @@ public class RedisStoreConfig {
          * Builds the configuration.
          *
          * @return the configuration.
+         * @throws RedisStoreConfigurationException when the mode is unsupported.
          */
-        public RedisStoreConfig build() {
+        public RedisStoreConfig build() throws RedisStoreConfigurationException {
 
+            validateMode(mode);
             return new RedisStoreConfig(this);
         }
 

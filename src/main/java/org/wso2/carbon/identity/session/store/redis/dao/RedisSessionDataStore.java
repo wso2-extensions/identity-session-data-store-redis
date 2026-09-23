@@ -115,8 +115,8 @@ public class RedisSessionDataStore extends SessionDataStore {
         try {
             long expiry = getExpiryMillis(nanoTime + getValidityPeriodNano(entry, type, tenantId));
             if (expiry <= 0) {
-                // The record arrived already expired, so nothing is persisted and any earlier one is removed.
-                redisTemplate.execute(commands -> commands.unlink(keyUtils.getSessionKey(type, key)));
+                // The record arrived already expired, so nothing is persisted. An earlier record is left to
+                // its own expiry rather than deleted, so a late write cannot remove a newer one.
                 return;
             }
             SessionStoreResult stored = SessionStoreResult.build(redisTemplate.executeScript(

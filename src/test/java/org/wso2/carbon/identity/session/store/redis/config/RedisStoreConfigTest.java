@@ -84,13 +84,12 @@ public class RedisStoreConfigTest {
     }
 
     @Test
-    void testUnsupportedModeFallsBackToStandalone() {
+    void testUnsupportedModeIsRejected() {
 
         // connect() treats anything that is not cluster as a single server, so an unrecognised mode has
-        // to be resolved here rather than left to become standalone silently.
-        RedisStoreConfig config = new RedisStoreConfig.Builder().mode("clustre").build();
-
-        assertEquals(RedisConstants.MODE_STANDALONE, config.getMode());
+        // to fail here rather than silently connect with the wrong topology.
+        assertThrows(RedisStoreConfigurationException.class,
+                () -> new RedisStoreConfig.Builder().mode("clustre").build());
     }
 
     @Test
