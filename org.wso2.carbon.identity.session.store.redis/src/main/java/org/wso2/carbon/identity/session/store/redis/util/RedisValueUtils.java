@@ -19,11 +19,13 @@
 package org.wso2.carbon.identity.session.store.redis.util;
 
 import org.apache.commons.lang.StringUtils;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Converts between the values of a Redis reply and the types the store uses.
@@ -124,5 +126,17 @@ public class RedisValueUtils {
 
         String userId = toString(value);
         return StringUtils.isEmpty(userId) ? null : userId;
+    }
+
+    /**
+     * Returns the remaining expiry of a record in milliseconds.
+     *
+     * @param expiryNano Absolute expiry in the units of {@code FrameworkUtils.getCurrentStandardNano()}.
+     * @return the remaining expiry in milliseconds.
+     */
+    public static long getExpiryMillis(long expiryNano) {
+
+        long expiry = TimeUnit.NANOSECONDS.toMillis(expiryNano - FrameworkUtils.getCurrentStandardNano());
+        return expiry <= 0 ? expiry : Math.max(expiry, RedisConstants.MIN_EXPIRY_MILLIS);
     }
 }

@@ -46,10 +46,6 @@ public class RedisConstants {
     public static final String CONF_TOPOLOGY_REFRESH_PERIOD = "cluster.topology.refresh.period.seconds";
     public static final String CONF_MAX_REDIRECTS = "cluster.max.redirects";
 
-    /**
-     * Minutes an entry lives when a metadata or application write created it before the session itself
-     * was stored, which bounds how long it lingers if the session write never arrives.
-     */
     // Defaults.
     public static final String DEFAULT_MODE = "standalone";
     public static final int DEFAULT_DATABASE = 0;
@@ -70,10 +66,8 @@ public class RedisConstants {
     public static final int DEFAULT_REDIS_PORT = 6379;
     public static final int DEFAULT_SENTINEL_PORT = 26379;
 
-    /**
-     * Record type of the session context, which is the only type holding a user, metadata and
-     * application information.
-     */
+    // Record type of the session context, which is the only type holding a user, metadata and
+    // application information.
     public static final String TYPE_SESSION_CONTEXT_CACHE = "AppAuthFrameworkSessionContextCache";
 
     // Key segments.
@@ -86,7 +80,7 @@ public class RedisConstants {
 
     public static final int UNSPECIFIED_TENANT_ID = MultitenantConstants.INVALID_TENANT_ID;
 
-    /** Identity provider of a federated mapping stored without one, as a key needs every segment. */
+    // Identity provider of a federated mapping stored without one, as a key needs every segment.
     public static final int UNSPECIFIED_IDP_ID = -1;
 
     // Session hash fields.
@@ -105,22 +99,22 @@ public class RedisConstants {
     public static final String FIELD_FED_PROTOCOL_TYPE = "proto";
     public static final String FIELD_FED_TIME_CREATED = "tc";
 
-    /** ASCII unit separator, used to join the components of a composite hash field name. */
+    // ASCII unit separator, used to join the components of a composite hash field name.
     public static final String FIELD_VALUE_SEPARATOR = "\u001f";
 
-    /** Components of an application field name: application id, inbound protocol and subject. */
+    // Components of an application field name: application id, inbound protocol and subject.
     public static final int APP_FIELD_COMPONENTS = 3;
 
-//    // Status a store of a session reports, so a caller can tell a rejection from a first store and from
-//    // an extension without inspecting the session again.
+    // Status a store of a session reports, so a caller can tell a rejection from a first store and from
+    // an extension without inspecting the session again.
     public static final int STORE_STATUS_STALE = 0;
     public static final int STORE_STATUS_CREATED = 1;
     public static final int STORE_STATUS_EXTENDED = 2;
 
-    /** Minimum key expiry, so a sub-second validity period is not rounded down to "no expiry". */
+    // Minimum key expiry, so a sub-second validity period is not rounded down to "no expiry".
     public static final long MIN_EXPIRY_MILLIS = 1000L;
 
-    /** Longest cooldown between connection attempts, which the backoff grows towards. */
+    // Longest cooldown between connection attempts, which the backoff grows towards.
     public static final long MAX_RECONNECT_COOLDOWN_MILLIS = 30000L;
 
     public static final String OPERATION_STORE = "STORE";

@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.session.store.redis.dao;
 
 import io.lettuce.core.RedisFuture;
 import io.lettuce.core.ScriptOutputType;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthHistory;
@@ -96,9 +97,11 @@ public class RedisFederatedSessionStore {
 
         Map<String, String> mapping = new LinkedHashMap<>();
         mapping.put(RedisConstants.FIELD_FED_SESSION_ID, sessionContextKey);
-        mapping.put(RedisConstants.FIELD_FED_IDP_NAME, toEmptyIfNull(authHistory.getIdpName()));
-        mapping.put(RedisConstants.FIELD_FED_AUTHENTICATOR_ID, toEmptyIfNull(authHistory.getAuthenticatorName()));
-        mapping.put(RedisConstants.FIELD_FED_PROTOCOL_TYPE, toEmptyIfNull(authHistory.getRequestType()));
+        mapping.put(RedisConstants.FIELD_FED_IDP_NAME, StringUtils.defaultString(authHistory.getIdpName()));
+        mapping.put(RedisConstants.FIELD_FED_AUTHENTICATOR_ID,
+                StringUtils.defaultString(authHistory.getAuthenticatorName()));
+        mapping.put(RedisConstants.FIELD_FED_PROTOCOL_TYPE,
+                StringUtils.defaultString(authHistory.getRequestType()));
         mapping.put(RedisConstants.FIELD_FED_TIME_CREATED, String.valueOf(System.currentTimeMillis()));
 
         byte[][] args = new byte[1 + mapping.size() * 2][];
@@ -332,14 +335,14 @@ public class RedisFederatedSessionStore {
      */
     public void removeBySession(String sessionId, int idpId) throws RedisSessionStoreException {
 
-        List<String> ofIdp = new ArrayList<>();
+        List<String> idpMembers = new ArrayList<>();
         for (String member : getSessionMembers(sessionId)) {
             FederatedSessionRef reference = FederatedSessionRef.buildFromMember(member);
             if (reference != null && reference.getIdpId() == idpId) {
-                ofIdp.add(member);
+                idpMembers.add(member);
             }
         }
-        removeMappings(sessionId, ofIdp);
+        removeMappings(sessionId, idpMembers);
     }
 
     /**
@@ -385,10 +388,5 @@ public class RedisFederatedSessionStore {
             }
         }
         return references;
-    }
-
-    private static String toEmptyIfNull(String value) {
-
-        return value == null ? "" : value;
     }
 }

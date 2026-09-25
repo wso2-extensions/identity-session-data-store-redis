@@ -62,7 +62,7 @@ public class RedisConnectionManager implements AutoCloseable {
             RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE);
     private static final String HOST_SEPARATOR = ",";
 
-    /** Separator between a host and its port. Unrelated to the key separator, which shares its value. */
+    // Separator between a host and its port. Unrelated to the key separator, which shares its value.
     private static final String HOST_PORT_SEPARATOR = ":";
     private static final String IPV6_START = "[";
     private static final String IPV6_END = "]";

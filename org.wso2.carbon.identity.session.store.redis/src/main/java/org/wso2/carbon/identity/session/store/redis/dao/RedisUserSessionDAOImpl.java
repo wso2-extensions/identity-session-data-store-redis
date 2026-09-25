@@ -58,6 +58,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -250,7 +251,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
                         + " and session Id: " + sessionId + " already exists in the database.");
             }
 
-            long expiry = storedExpiry(stored);
+            long expiry = getStoredExpiry(stored);
             Long added = redisTemplate.executeScript(RedisScripts.ADD_USER_SESSION,
                     ScriptOutputType.INTEGER, keyUtils.getUserKey(userId),
                     RedisScripts.createSessionMember(sessionId, expiry));
@@ -258,7 +259,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
                 throw new DuplicatedAuthUserException("Mapping between user Id: " + userId
                         + " and session Id: " + sessionId + " already exists in the database.");
             }
-            addToTenantIndex(sessionId, storedTenantId(stored), expiry);
+            addToTenantIndex(sessionId, getStoredTenantId(stored), expiry);
         } catch (RedisSessionStoreException e) {
             throw new UserSessionException("Error while storing mapping between user Id: " + userId
                     + " and session Id: " + sessionId, e);
@@ -390,7 +391,6 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
     @Override
     public void removeExpiredSessionRecords() {
 
-        // TODO: We can improve the logic to delete any orphan entries.
         if (LOG.isDebugEnabled()) {
             LOG.debug("Expired session records are removed by Redis, so no cleanup is performed.");
         }
@@ -486,7 +486,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
         Map<String, String> fields = new LinkedHashMap<>();
         for (Map.Entry<String, String> property : metaData.entrySet()) {
             fields.put(RedisKeyUtils.getMetadataField(property.getKey()),
-                    property.getValue() == null ? StringUtils.EMPTY : property.getValue());
+                    Objects.toString(property.getValue(), StringUtils.EMPTY));
         }
         try {
             setSessionFields(sessionId, fields);
@@ -506,12 +506,15 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
     @Override
     public void updateSessionMetaData(String sessionId, String propertyType, String value) throws UserSessionException {
 
+        String fieldKey = RedisKeyUtils.getMetadataField(propertyType);
+        String fieldValue = Objects.toString(value, StringUtils.EMPTY);
+        Map<String, String> sessionFields = Map.of(fieldKey, fieldValue);
+
         try {
-            setSessionFields(sessionId, Collections.singletonMap(RedisKeyUtils.getMetadataField(propertyType),
-                    value == null ? StringUtils.EMPTY : value));
+            setSessionFields(sessionId, sessionFields);
         } catch (RedisSessionStoreException e) {
-            throw new UserSessionException("Error while updating " + propertyType + " of session: " + sessionId + "."
-                    , e);
+            String errorMessage = String.format("Error while updating %s of session: %s.", propertyType, sessionId);
+            throw new UserSessionException(errorMessage, e);
         }
     }
 
@@ -847,7 +850,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
             throws RedisSessionStoreException {
 
         List<List<KeyValue<String, byte[]>>> replies = new ArrayList<>(sessionIds.size());
-        for (List<String> batch : batches(sessionIds)) {
+        for (List<String> batch : getBatches(sessionIds)) {
             replies.addAll(redisTemplate.executeBatch(commands -> {
                 List<RedisFuture<List<KeyValue<String, byte[]>>>> pending = new ArrayList<>(batch.size());
                 for (String sessionId : batch) {
@@ -859,7 +862,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
         return replies;
     }
 
-    private List<List<String>> batches(List<String> sessionIds) {
+    private List<List<String>> getBatches(List<String> sessionIds) {
 
         List<List<String>> batches = new ArrayList<>();
         int batchSize = context.getBatchSize();
@@ -932,10 +935,10 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
         SessionRemovalResult deleted = SessionRemovalResult.build(redisTemplate.executeScript(
                 RedisScripts.DELETE_SESSION, ScriptOutputType.MULTI, context.getSessionContextKey(sessionId)));
         Integer tenantId = deleted.getTenantId();
-        if (tenantId != null) {
-            // The tenant is written with the session record, so an entry that carries one was a session
-            // rather than fields written ahead of it, and a session should already have been removed.
-            LOG.warn("A terminated session was still available and has been removed. Session id: "
+        // The tenant is written with the session record, so an entry that carries one was a session
+        // rather than fields written ahead of it, and a session should already have been removed.
+        if (tenantId != null && LOG.isDebugEnabled()) {
+            LOG.debug("A terminated session was still available and has been removed. Session id: "
                     + sessionId + ".");
         }
         byte[] session = RedisValueUtils.toBytes(sessionId);
@@ -964,7 +967,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
      * The remaining expiry of the session a store of the user returned, which is the second element of
      * its reply.
      */
-    private static long storedExpiry(List<?> result) {
+    private static long getStoredExpiry(List<?> result) {
 
         return result != null && result.size() > 1 ? RedisValueUtils.toLong(result.get(1)) : 0;
     }
@@ -973,7 +976,7 @@ public class RedisUserSessionDAOImpl implements UserSessionDAO {
      * The tenant a store of the user returned, which is the third element of its reply and is absent when
      * the session carried no tenant.
      */
-    private static Integer storedTenantId(List<?> result) {
+    private static Integer getStoredTenantId(List<?> result) {
 
         return result != null && result.size() > 2
                 ? RedisValueUtils.toInteger(RedisValueUtils.toString(result.get(2))) : null;

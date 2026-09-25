@@ -44,7 +44,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A record is a single hash, and expiry is the key expiry rather than a stored column, so a session and
@@ -113,7 +112,7 @@ public class RedisSessionDataStore extends SessionDataStore {
     public void persistSessionData(String key, String type, Object entry, long nanoTime, int tenantId) {
 
         try {
-            long expiry = getExpiryMillis(nanoTime + getValidityPeriodNano(entry, type, tenantId));
+            long expiry = RedisValueUtils.getExpiryMillis(nanoTime + getValidityPeriodNano(entry, type, tenantId));
             if (expiry <= 0) {
                 // The record arrived already expired, so nothing is persisted. An earlier record is left to
                 // its own expiry rather than deleted, so a late write cannot remove a newer one.
@@ -329,14 +328,6 @@ public class RedisSessionDataStore extends SessionDataStore {
     @Override
     public void stopService() {
 
-        close();
-    }
-
-    /**
-     * Releases the Redis client and its connection.
-     */
-    public void close() {
-
         try {
             context.close();
         } catch (RuntimeException e) {
@@ -534,18 +525,6 @@ public class RedisSessionDataStore extends SessionDataStore {
         } catch (SessionSerializerException | RuntimeException e) {
             throw new RedisSessionStoreException("Error while deserializing the session object.", e);
         }
-    }
-
-    /**
-     * Returns the remaining expiry of a record in milliseconds.
-     *
-     * @param expiryNano Absolute expiry in the units of {@code FrameworkUtils.getCurrentStandardNano()}.
-     * @return the remaining expiry in milliseconds.
-     */
-    private static long getExpiryMillis(long expiryNano) {
-
-        long expiry = TimeUnit.NANOSECONDS.toMillis(expiryNano - FrameworkUtils.getCurrentStandardNano());
-        return expiry <= 0 ? expiry : Math.max(expiry, RedisConstants.MIN_EXPIRY_MILLIS);
     }
 
     private static boolean isSessionContextType(String type) {

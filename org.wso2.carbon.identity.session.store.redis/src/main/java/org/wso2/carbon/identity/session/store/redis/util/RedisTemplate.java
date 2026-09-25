@@ -354,7 +354,7 @@ public class RedisTemplate {
 
         private final String key;
 
-        /** Read by the enclosing template, so the array is never handed out of the class. */
+        // Read by the enclosing template, so the array is never handed out of the class.
         private final byte[][] args;
 
         /**
