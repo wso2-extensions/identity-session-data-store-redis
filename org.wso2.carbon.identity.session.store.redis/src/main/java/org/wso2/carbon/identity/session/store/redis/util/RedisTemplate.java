@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.session.store.redis.util;
 
 import io.lettuce.core.RedisCommandExecutionException;
+import io.lettuce.core.RedisCommandTimeoutException;
 import io.lettuce.core.RedisException;
 import io.lettuce.core.RedisFuture;
 import io.lettuce.core.RedisNoScriptException;
@@ -36,6 +37,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -79,7 +83,7 @@ public class RedisTemplate {
         try {
             return callable.execute(commands);
         } catch (RedisException e) {
-            throw new RedisSessionStoreException("Error while executing a Redis command.", e);
+            throw handleFailure("Error while executing a Redis command.", e);
         }
     }
 
@@ -110,7 +114,7 @@ public class RedisTemplate {
             }
             throw new RedisSessionStoreException("Error while executing a Redis script.", e);
         } catch (RedisException e) {
-            throw new RedisSessionStoreException("Error while executing a Redis script.", e);
+            throw handleFailure("Error while executing a Redis script.", e);
         }
     }
 
@@ -151,7 +155,7 @@ public class RedisTemplate {
         try {
             pending = callable.issue(commands);
         } catch (RedisException e) {
-            throw new RedisSessionStoreException("Error while issuing a Redis command batch.", e);
+            throw handleFailure("Error while issuing a Redis command batch.", e);
         }
         return await(pending);
     }
@@ -209,7 +213,7 @@ public class RedisTemplate {
         try {
             return commands.eval(script, output, keys, args);
         } catch (RedisException e) {
-            throw new RedisSessionStoreException("Error while executing a Redis script after reloading it.", e);
+            throw handleFailure("Error while executing a Redis script after reloading it.", e);
         }
     }
 
@@ -223,17 +227,20 @@ public class RedisTemplate {
         long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(commandTimeout);
         List<T> replies = new ArrayList<>(pending.size());
         Map<Integer, String> failures = new LinkedHashMap<>();
+        boolean timedOut = false;
         for (int index = 0; index < pending.size(); index++) {
             RedisFuture<T> future = pending.get(index);
             long remaining = deadline - System.nanoTime();
             try {
                 if (remaining <= 0 || !future.await(remaining, TimeUnit.NANOSECONDS)) {
+                    connectionManager.refreshClusterConnection();
                     throw new RedisSessionStoreException("A Redis command batch of " + pending.size()
                             + " commands did not complete within " + commandTimeout + "ms; " + index
                             + " of them had replied.");
                 }
                 String error = future.getError();
                 if (error != null) {
+                    timedOut |= isTimedOut(future);
                     failures.put(index, error);
                     replies.add(null);
                 } else {
@@ -245,11 +252,47 @@ public class RedisTemplate {
                 throw new RedisSessionStoreException("Interrupted while awaiting a Redis command batch.", e);
             } catch (ExecutionException e) {
                 // A failure the server did not reply an error for, such as a connection lost mid batch.
+                timedOut |= e.getCause() instanceof RedisCommandTimeoutException;
                 failures.put(index, String.valueOf(e.getCause()));
                 replies.add(null);
             }
         }
+        if (timedOut) {
+            connectionManager.refreshClusterConnection();
+        }
         return new BatchResult<>(replies, failures);
+    }
+
+    /**
+     * Wraps a client failure, reporting a timeout to the connection manager so it can reroute the commands
+     * that follow.
+     */
+    private RedisSessionStoreException handleFailure(String message, RedisException e) {
+
+        if (e instanceof RedisCommandTimeoutException) {
+            connectionManager.refreshClusterConnection();
+        }
+        return new RedisSessionStoreException(message, e);
+    }
+
+    /**
+     * Whether a completed command failed on the client's own command timeout, which reports it through the
+     * error of the future rather than as a server reply.
+     */
+    private static boolean isTimedOut(RedisFuture<?> future) {
+
+        CompletableFuture<?> completed = future.toCompletableFuture();
+        if (!completed.isCompletedExceptionally()) {
+            return false;
+        }
+        try {
+            completed.getNow(null);
+            return false;
+        } catch (CompletionException e) {
+            return e.getCause() instanceof RedisCommandTimeoutException;
+        } catch (CancellationException e) {
+            return false;
+        }
     }
 
     private static boolean isScriptNotCached(RedisCommandExecutionException e) {

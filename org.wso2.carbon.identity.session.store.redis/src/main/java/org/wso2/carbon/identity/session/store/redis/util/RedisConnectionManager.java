@@ -21,6 +21,7 @@ package org.wso2.carbon.identity.session.store.redis.util;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.lettuce.core.AbstractRedisClient;
 import io.lettuce.core.ClientOptions;
+import io.lettuce.core.ReadFrom;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.SocketOptions;
@@ -35,6 +36,8 @@ import io.lettuce.core.cluster.api.sync.RedisClusterCommands;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
+import io.lettuce.core.masterreplica.MasterReplica;
+import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -76,6 +79,7 @@ public class RedisConnectionManager implements AutoCloseable {
     private volatile RedisClusterAsyncCommands<String, byte[]> asyncCommands;
     private volatile long nextRetryTime;
     private final AtomicLong retryCooldown = new AtomicLong();
+    private final AtomicLong nextTimeoutRefreshTime = new AtomicLong();
 
     /**
      * Creates a manager. Nothing is connected until an operation needs a connection.
@@ -138,6 +142,57 @@ public class RedisConnectionManager implements AutoCloseable {
 
         ensureConnected();
         return asyncCommands;
+    }
+
+    /**
+     * Reports a command that timed out. In cluster mode, a master that stops responding without closing
+     * its sockets fires none of the adaptive refresh triggers, so its slots stay routed to it after the
+     * cluster promotes its replica, until the next periodic refresh. This refreshes the topology instead,
+     * at most once per {@link RedisConstants#TIMEOUT_TOPOLOGY_REFRESH_INTERVAL_MILLIS}. It does not wait
+     * for the refresh, which the unresponsive node itself holds up for the connection timeout.
+     */
+    public void refreshClusterConnection() {
+
+        AbstractRedisClient current = client;
+        if (!(current instanceof RedisClusterClient) || config == null || !config.isTopologyRefreshEnabled()
+                || !claimTimeoutRefresh(System.currentTimeMillis())) {
+            return;
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("A Redis command timed out. Refreshing the cluster topology of " + config.getHosts());
+        }
+        // The refresh connects to every known node, so it resolves through this bundle as connect() does.
+        ClassLoader previousClassLoader = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(RedisConnectionManager.class.getClassLoader());
+            ((RedisClusterClient) current).refreshPartitionsAsync().whenComplete((result, error) -> {
+                if (error != null && LOG.isDebugEnabled()) {
+                    LOG.debug("Error while refreshing the Redis cluster topology after a command timeout.",
+                            error);
+                }
+            });
+        } catch (RuntimeException e) {
+            // A client shut down by a concurrent reconnect or close() has nothing left to refresh.
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Could not refresh the Redis cluster topology after a command timeout.", e);
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(previousClassLoader);
+        }
+    }
+
+    /**
+     * Claims the next timeout triggered refresh for one caller. Every command queued on an unresponsive node
+     * times out at about the same moment, and one refresh serves them all.
+     *
+     * @param now Current time in milliseconds.
+     * @return true when the caller is to refresh the topology.
+     */
+    boolean claimTimeoutRefresh(long now) {
+
+        long next = nextTimeoutRefreshTime.get();
+        return now >= next && nextTimeoutRefreshTime.compareAndSet(next,
+                now + RedisConstants.TIMEOUT_TOPOLOGY_REFRESH_INTERVAL_MILLIS);
     }
 
     private void ensureConnected() throws RedisSessionStoreException {
@@ -217,9 +272,8 @@ public class RedisConnectionManager implements AutoCloseable {
 
     private AbstractRedisClient connectToServer() throws RedisSessionStoreException {
 
-        RedisURI uri = RedisConstants.MODE_SENTINEL.equalsIgnoreCase(config.getMode())
-                ? buildSentinelUri(config)
-                : buildStandaloneUri(config);
+        boolean sentinelMode = RedisConstants.MODE_SENTINEL.equalsIgnoreCase(config.getMode());
+        RedisURI uri = sentinelMode ? buildSentinelUri(config) : buildStandaloneUri(config);
 
         RedisClient newClient = RedisClient.create(uri);
         newClient.setOptions(ClientOptions.builder()
@@ -230,7 +284,9 @@ public class RedisConnectionManager implements AutoCloseable {
                 .build());
         boolean adopted = false;
         try {
-            StatefulRedisConnection<String, byte[]> newConnection = newClient.connect(CODEC);
+            StatefulRedisConnection<String, byte[]> newConnection = sentinelMode
+                    ? connectToMaster(newClient, uri)
+                    : newClient.connect(CODEC);
             newConnection.setTimeout(Duration.ofMillis(config.getCommandTimeout()));
             adopt(newClient, newConnection, newConnection.sync(), newConnection.async());
             adopted = true;
@@ -241,6 +297,20 @@ public class RedisConnectionManager implements AutoCloseable {
                 release(null, newClient);
             }
         }
+    }
+
+    /**
+     * Connects to the master that the sentinels report. A plain connection resolves the master only when
+     * it connects, so a master that stops responding without closing its sockets keeps receiving every
+     * command until it comes back. This connection subscribes to the sentinels instead, and moves to the
+     * promoted replica shortly after they announce a failover.
+     */
+    private static StatefulRedisConnection<String, byte[]> connectToMaster(RedisClient client, RedisURI uri) {
+
+        StatefulRedisMasterReplicaConnection<String, byte[]> connection = MasterReplica.connect(client, CODEC, uri);
+        // Sessions are read back right after they are written, which a lagging replica could not serve.
+        connection.setReadFrom(ReadFrom.UPSTREAM);
+        return connection;
     }
 
     private AbstractRedisClient connectToCluster() throws RedisSessionStoreException {

@@ -117,6 +117,9 @@ public class RedisConstants {
     // Longest cooldown between connection attempts, which the backoff grows towards.
     public static final long MAX_RECONNECT_COOLDOWN_MILLIS = 30000L;
 
+    // Shortest interval between cluster topology refreshes triggered by command timeouts.
+    public static final long TIMEOUT_TOPOLOGY_REFRESH_INTERVAL_MILLIS = 1000L;
+
     public static final String OPERATION_STORE = "STORE";
     public static final String OPERATION_DELETE = "DELETE";
 

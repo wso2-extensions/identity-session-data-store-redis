@@ -26,6 +26,7 @@ import org.wso2.carbon.identity.session.store.redis.exception.RedisSessionStoreE
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -201,6 +202,35 @@ public class RedisConnectionManagerTest {
 
         assertThrows(RedisSessionStoreException.class,
                 () -> RedisConnectionManager.buildClusterUris(clusterConfig("10.0.0.1:invalid")));
+    }
+
+    @Test
+    void testTimeoutRefreshIsClaimedOncePerInterval() {
+
+        // Every command queued on an unresponsive node times out together, and one refresh serves them all.
+        RedisConnectionManager manager = new RedisConnectionManager(clusterConfig("10.0.0.1:7000"));
+        long now = 1_000_000L;
+
+        assertTrue(manager.claimTimeoutRefresh(now));
+        assertFalse(manager.claimTimeoutRefresh(now));
+        assertFalse(manager.claimTimeoutRefresh(
+                now + RedisConstants.TIMEOUT_TOPOLOGY_REFRESH_INTERVAL_MILLIS - 1));
+        assertTrue(manager.claimTimeoutRefresh(now + RedisConstants.TIMEOUT_TOPOLOGY_REFRESH_INTERVAL_MILLIS));
+    }
+
+    @Test
+    void testTimeoutWithoutAClusterClientDoesNotClaimARefresh() {
+
+        // Neither a manager that has not connected yet nor one without a configuration holds a cluster
+        // client, so there is no topology to refresh and the next claim is still available.
+        RedisConnectionManager unconnected = new RedisConnectionManager(clusterConfig("10.0.0.1:7000"));
+        unconnected.refreshClusterConnection();
+        assertTrue(unconnected.claimTimeoutRefresh(System.currentTimeMillis()));
+
+        RedisConnectionManager unconfigured = new RedisConnectionManager() {
+        };
+        unconfigured.refreshClusterConnection();
+        assertTrue(unconfigured.claimTimeoutRefresh(System.currentTimeMillis()));
     }
 
     private static RedisStoreConfig clusterConfig(String hosts) {

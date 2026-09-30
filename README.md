@@ -4,18 +4,13 @@ A Redis backed session store, deployed as a single OSGi bundle. It replaces the 
 storage without any change to the Identity Server, by implementing the two extension points the
 framework already provides.
 
-Requires `carbon-identity-framework` on the `feature-pluggable-session-store` branch, which is where
-those extension points live.
-
 ## Contents
 
 - [How it plugs in](#how-it-plugs-in)
-- [Module structure](#module-structure)
 - [Data model](#data-model)
 - [Building](#building)
 - [Configuring](#configuring)
 - [Testing with the Identity Server](#testing-with-the-identity-server)
-- [Running the unit tests](#running-the-unit-tests)
 - [Differences from the relational store](#differences-from-the-relational-store)
 - [Limitations of this phase](#limitations-of-this-phase)
 
@@ -36,35 +31,6 @@ session termination and federated single logout kept reading the database.
 application records rather than session state, they outlive any session, and they are owned by other
 components, so this store reads them where they are with `JdbcTemplate`, exactly as the relational
 implementation does.
-
-## Module structure
-
-The packages follow the framework, so a class sits where its relational counterpart sits.
-
-```
-org.wso2.carbon.identity.session.store.redis
-├── config      RedisStoreConfig
-├── dao         RedisSessionContext, RedisSessionDataStore, RedisUserSessionDAOImpl,
-│               RedisFederatedSessionStore
-├── exception   RedisSessionStoreException
-├── internal    RedisSessionStoreServiceComponent, RedisSessionStoreDataHolder
-├── model       SessionInfo, SessionSearchResult, FederatedSessionRef
-└── util        RedisConnectionManager, RedisTemplate, RedisScripts, RedisConstants,
-                RedisKeyUtils, RedisValueUtils, SessionFilterEvaluator
-```
-
-`RedisSessionContext` is what the store and the DAO share: one connection, one key scheme and the
-settings that decide how a key is written. Both are constructed with it, so neither has to expose its
-internals to the other and neither has to be built first.
-
-Redis is accessed the way the database is accessed in the framework:
-
-| Relational | Redis |
-|---|---|
-| `IdentityDatabaseUtil` | `RedisConnectionManager`, which owns the client and the shared connection |
-| `JdbcTemplate` | `RedisTemplate`, which executes commands and scripts and translates every failure |
-| `SQLQueries` | `RedisScripts`, which holds the Lua scripts |
-| `DataAccessException` | `RedisSessionStoreException` |
 
 ## Data model
 
@@ -128,7 +94,7 @@ mvn clean install
 ```
 
 The bundle is at
-`org.wso2.carbon.identity.session.store.redis/target/org.wso2.carbon.identity.session.store.redis-1.0.0-SNAPSHOT.jar`.
+`org.wso2.carbon.identity.session.store.redis/target/org.wso2.carbon.identity.session.store.redis-<version>.jar`.
 Lettuce and Netty are embedded in it, so nothing is added to the server classpath.
 
 ## Configuring
@@ -145,7 +111,7 @@ bundle reads the ones it defines and applies a default to every property that is
 ### 1. Deploy the bundle
 
 ```bash
-cp org.wso2.carbon.identity.session.store.redis/target/org.wso2.carbon.identity.session.store.redis-1.0.0-SNAPSHOT.jar \
+cp org.wso2.carbon.identity.session.store.redis/target/org.wso2.carbon.identity.session.store.redis-*.jar \
    $IS_HOME/repository/components/dropins/
 ```
 
@@ -239,7 +205,7 @@ Cluster settings:
 
 | Property | Default | Description |
 |---|---|---|
-| `cluster.topology.refresh.enabled` | `true` | Whether the topology is refreshed periodically and on a redirect |
+| `cluster.topology.refresh.enabled` | `true` | Whether the topology is refreshed periodically, on a redirect, and on a command timeout (at most once a second) |
 | `cluster.topology.refresh.period.seconds` | `60` | |
 | `cluster.max.redirects` | `5` | Redirects followed for one command |
 
@@ -311,8 +277,11 @@ You should see a session record, a user index and a tenant index:
 ```
 idn:s:AppAuthFrameworkSessionContextCache:<sessionId>
 idn:u:<userId>
-idn:tid:-1
+idn:tid:-1234
 ```
+
+`-1234` is the id of the super tenant, `carbon.super`. A user of another tenant is indexed under the id
+of that tenant.
 
 Inspect the record and confirm it holds an expiry, so that the session is removed by Redis:
 
@@ -370,15 +339,24 @@ docker exec -it redis-is redis-cli --scan --pattern 'idn:f*'
 Trigger a logout at the identity provider. The mapping and its indexes should be removed and the
 Identity Server session should end.
 
-### 6. Confirm a Redis outage does not break authentication
+### 6. Confirm the store recovers from a Redis outage
 
 ```bash
 docker stop redis-is
 ```
 
-Log in again. Authentication should succeed, the log should hold an error for each failed session
-operation, and single sign-on should not work while Redis is down, because no session is persisted.
-Start Redis again and confirm that persistence resumes without restarting the server:
+Log in again. Authentication fails while Redis is down. A session record that cannot be stored is only
+logged, but session metadata that cannot be stored is reported by the framework as a failure of the
+authentication:
+
+```
+ERROR {RedisSessionDataStore} - Error while storing session data of type: AppAuthFrameworkSessionContextCache
+ERROR {DefaultAuthenticationRequestHandler} - Storing session meta data failed.
+ERROR {DefaultRequestCoordinator} - Exception in Authentication Framework
+```
+
+Each attempt takes several seconds, as the session operations wait for the connection to fail. Start
+Redis again and confirm that logins succeed and persistence resumes without restarting the server:
 
 ```bash
 docker start redis-is
@@ -394,17 +372,6 @@ docker exec -it <node> redis-cli -c --scan --pattern 'idn:*'
 
 Fail over a master and confirm sessions survive and new logins still work, which exercises the topology
 refresh.
-
-## Running the unit tests
-
-```bash
-mvn clean test
-```
-
-The tests need no Redis server. They cover key building, configuration parsing, the connection details
-built for each topology, the store models, and the behaviour of the store when Redis cannot be reached.
-The behaviour that only a server can show, such as the Lua scripts and the store operations end to end,
-is covered by the manual verification above.
 
 ## Differences from the relational store
 
