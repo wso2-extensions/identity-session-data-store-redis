@@ -125,7 +125,7 @@ public class RedisStoreConfigTest {
     }
 
     @Test
-    void testOnlyTheHostAndTheEnableFlagHaveToBeConfigured() {
+    void testOnlyTheHostHasToBeConfigured() {
 
         // The minimum configuration is a host. Everything else is left to its default, so a deployment
         // that has no opinion on timeouts, key prefix or batching does not have to hold one.

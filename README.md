@@ -125,7 +125,6 @@ type = "redis"
 
 [session_storage.properties]
 hosts = "redis-1:6379"
-enable = true
 ```
 
 That renders the `SessionStorage` element of `identity.xml`:
@@ -135,7 +134,6 @@ That renders the `SessionStorage` element of `identity.xml`:
     <Type>redis</Type>
     <Properties>
         <Property name="hosts">redis-1:6379</Property>
-        <Property name="enable">true</Property>
     </Properties>
 </SessionStorage>
 ```
@@ -189,7 +187,6 @@ Connection settings:
 | Property | Default | Description |
 |---|---|---|
 | `hosts` | | Required. Comma separated. The server in standalone mode, the sentinels in sentinel mode, the seed nodes in cluster mode. An entry is `host`, `host:port`, `[ipv6]` or `[ipv6]:port`; an IPv6 literal has to be bracketed to carry a port |
-| `enable` | `false` | Required. Whether sessions are persisted. When `false`, reads report no session and writes do nothing |
 | `mode` | `standalone` | `standalone`, `sentinel` or `cluster` |
 | `master.name` | | Required in sentinel mode |
 | `username`, `password` | | Credentials of the data nodes |
@@ -225,7 +222,6 @@ mode = "sentinel"
 hosts = "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379"
 "master.name" = "mymaster"
 password = "redis-password"
-enable = true
 ```
 
 Cluster:
@@ -238,7 +234,6 @@ type = "redis"
 mode = "cluster"
 hosts = "node-1:7000,node-2:7001,node-3:7002"
 password = "redis-password"
-enable = true
 ```
 
 ## Testing with the Identity Server
@@ -338,40 +333,6 @@ docker exec -it redis-is redis-cli --scan --pattern 'idn:f*'
 
 Trigger a logout at the identity provider. The mapping and its indexes should be removed and the
 Identity Server session should end.
-
-### 6. Confirm the store recovers from a Redis outage
-
-```bash
-docker stop redis-is
-```
-
-Log in again. Authentication fails while Redis is down. A session record that cannot be stored is only
-logged, but session metadata that cannot be stored is reported by the framework as a failure of the
-authentication:
-
-```
-ERROR {RedisSessionDataStore} - Error while storing session data of type: AppAuthFrameworkSessionContextCache
-ERROR {DefaultAuthenticationRequestHandler} - Storing session meta data failed.
-ERROR {DefaultRequestCoordinator} - Exception in Authentication Framework
-```
-
-Each attempt takes several seconds, as the session operations wait for the connection to fail. Start
-Redis again and confirm that logins succeed and persistence resumes without restarting the server:
-
-```bash
-docker start redis-is
-```
-
-### 7. Confirm cluster mode
-
-With `mode=cluster`, log in and confirm the keys are spread across the nodes:
-
-```bash
-docker exec -it <node> redis-cli -c --scan --pattern 'idn:*'
-```
-
-Fail over a master and confirm sessions survive and new logins still work, which exercises the topology
-refresh.
 
 ## Differences from the relational store
 
