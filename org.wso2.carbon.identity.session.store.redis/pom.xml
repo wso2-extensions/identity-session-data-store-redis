@@ -20,7 +20,7 @@
     <parent>
         <groupId>org.wso2.carbon.extension.identity.session.store.redis</groupId>
         <artifactId>identity-session-data-store-redis</artifactId>
-        <version>1.0.1-SNAPSHOT</version>
+        <version>1.0.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>

@@ -29,12 +29,12 @@
         <url>https://github.com/wso2-extensions/identity-session-data-store-redis.git</url>
         <developerConnection>scm:git:https://github.com/wso2-extensions/identity-session-data-store-redis.git</developerConnection>
         <connection>scm:git:https://github.com/wso2-extensions/identity-session-data-store-redis.git</connection>
-        <tag>HEAD</tag>
+        <tag>v1.0.1</tag>
     </scm>
 
     <groupId>org.wso2.carbon.extension.identity.session.store.redis</groupId>
     <artifactId>identity-session-data-store-redis</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1</version>
     <modules>
         <module>org.wso2.carbon.identity.session.store.redis</module>
     </modules>
