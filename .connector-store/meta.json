@@ -8,11 +8,11 @@
     "labels": ["Performance"],
     "releases": [
         {
-            "tagName": "v1.0.0",
+            "tagName": "v1.0.1",
             "products": [
                 "IS 7.2.0"
             ],
-            "isHidden": true
+            "isHidden": false
         }
     ]
 }
